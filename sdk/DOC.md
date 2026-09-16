@@ -95,3 +95,25 @@ Configured agents do not expose a tool approval policy setting. The parent’s
 executes its available tools without inheriting that policy or approval callback.
 Its configured `tools` allowlist and disabled-tool filtering still apply. Runtime
 hooks remain inherited and can block tool execution.
+
+## Shell executor errors
+
+`createShellExecutor` rejects with one of two error classes, so a host can tell
+"the command ran and failed" from "the command never ran" without parsing
+messages:
+
+- `CommandExitError` — the shell started and exited non-zero. `exitCode` is the
+  process exit code and `output` is what the command printed. The `run_commands`
+  tool wrapper turns this into a failed tool result that still carries the
+  output.
+- `CommandSpawnError` — the shell process could not be started, so there is no
+  exit code. The message keeps the pre-existing `Failed to execute command: …`
+  form. `code` is the operating system error libuv reported (`ENOENT`,
+  `EACCES`, `EFTYPE` for a file that is not a valid executable). Because spawn
+  reports `ENOENT` with the same message when the executable is not found and
+  when the working directory no longer exists, `missing` records which path was
+  absent: `"executable"` or `"cwd"`. It is `undefined` for every other code.
+
+Hosts that record command telemetry should label a `CommandSpawnError` by its
+`code` (and `missing`) rather than inventing an exit code; the VS Code
+extension does this in its `errorCode` dimension.
