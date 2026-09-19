@@ -531,6 +531,7 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-updater",
  "tokio",
+ "windows",
 ]
 
 [[package]]
