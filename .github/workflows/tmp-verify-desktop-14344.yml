@@ -88,7 +88,14 @@ jobs:
             - name: Build sidecar binary
               id: build_sidecar
               if: ${{ !cancelled() && steps.build_sdk.outcome == 'success' }}
-              run: bun -F @cline/code build:sidecar:bin
+              shell: bash
+              # The same script also cross-compiles the Linux remote helpers,
+              # which are bundle-time resources cargo never looks at, and whose
+              # Bun runtime download is flaky from a Windows runner. Only the
+              # Windows sidecar named by externalBin has to exist here.
+              run: |
+                  bun -F @cline/code build:sidecar:bin || echo "sidecar script exited non-zero; checking for the Windows binary"
+                  test -f apps/examples/desktop-app/src-tauri/bin/code-sidecar-x86_64-pc-windows-msvc.exe
 
             - name: Cargo check (x86_64-pc-windows-msvc)
               id: cargo_check
