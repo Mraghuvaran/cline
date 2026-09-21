@@ -150,7 +150,7 @@ jobs:
               shell: bash
               run: |
                   BUN_VERSION="$(bun --version)"
-                  CACHE_DIR="${RUNNER_TEMP//\//}/bun-install-cache"
+                  CACHE_DIR="${RUNNER_TEMP//\\//}/bun-install-cache"
                   mkdir -p "$CACHE_DIR"
                   for target in linux-x64-baseline linux-aarch64; do
                     dest="$CACHE_DIR/bun-$target-v$BUN_VERSION"
