@@ -40,8 +40,9 @@ jobs:
                   cargo fmt --version
                   bun --version
 
-            - name: Cache cargo
-              uses: actions/cache@v4
+            - name: Restore cargo cache
+              id: cargo_cache
+              uses: actions/cache/restore@v4
               with:
                   path: |
                       ~/.cargo/registry
@@ -97,6 +98,19 @@ jobs:
                   bun -F @cline/code build:sidecar:bin || echo "sidecar script exited non-zero; checking for the Windows binary"
                   test -f apps/examples/desktop-app/src-tauri/bin/code-sidecar-x86_64-pc-windows-msvc.exe
 
+            # tauri-build validates every bundle.resources glob at build-script
+            # time, including for `cargo check`. The real remote helpers are Linux
+            # binaries Bun cross-compiles; nothing in a compile-only run opens them,
+            # so a placeholder is enough to satisfy the glob.
+            - name: Stub Linux remote helpers
+              if: ${{ !cancelled() && steps.build_sidecar.outcome == 'success' }}
+              shell: bash
+              run: |
+                  cd apps/examples/desktop-app/src-tauri
+                  mkdir -p bin/remote-helpers
+                  [ -n "$(ls -A bin/remote-helpers)" ] || : > bin/remote-helpers/placeholder
+                  ls -l bin bin/remote-helpers
+
             - name: Cargo check (x86_64-pc-windows-msvc)
               id: cargo_check
               if: ${{ !cancelled() && steps.build_web.outcome == 'success' && steps.build_sidecar.outcome == 'success' }}
@@ -105,3 +119,13 @@ jobs:
             - name: Cargo test window_bounds_tests
               if: ${{ !cancelled() && steps.cargo_check.outcome == 'success' }}
               run: cargo test --manifest-path apps/examples/desktop-app/src-tauri/Cargo.toml window_bounds_tests -- --nocapture
+
+            - name: Save cargo cache
+              if: ${{ always() && steps.cargo_cache.outputs.cache-hit != 'true' }}
+              uses: actions/cache/save@v4
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      apps/examples/desktop-app/src-tauri/target
+                  key: ${{ steps.cargo_cache.outputs.cache-primary-key }}
